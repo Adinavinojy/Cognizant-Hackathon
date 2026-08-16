@@ -70,23 +70,17 @@ Frontend available at: http://localhost:5173
 
 ---
 
-### Option C — Full stack with Docker Compose (includes local Postgres)
+## Deployment
 
-```bash
-cd ai-interview-prep
+### Backend (Render / Railway)
+- **Environment**: Python 3 (pinned via `backend/runtime.txt` to `python-3.11.x`)
+- **Build Command**: `pip install -r requirements.txt`
+- **Start Command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+- **Environment Variables**: Set `DATABASE_URL`, `JWT_SECRET`, etc. in service settings.
 
-# Build and start all services
-docker compose up --build
-
-# First run — migrations run automatically inside the backend container
-```
-
-| Service | URL |
-|---|---|
-| Frontend | http://localhost:3000 |
-| Backend API | http://localhost:8000 |
-| Swagger docs | http://localhost:8000/docs |
-| Postgres | localhost:5432 (user: postgres / pw: postgres) |
+### Frontend (Vercel)
+- **Build Settings**: Auto-detected Vite build (framework preset: Vite). No custom config needed.
+- **Environment Variables**: Set `VITE_API_URL` to your deployed backend URL.
 
 ---
 
