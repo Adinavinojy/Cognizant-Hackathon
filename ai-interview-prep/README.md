@@ -25,7 +25,8 @@ build in parallel from day one against a working (if fake) API.
 ### Option A — Backend only (venv + local/hosted Postgres)
 
 ```bash
-cd ai-interview-prep/backend
+# Navigate to backend directory (from Cognizant-Hackathon: cd ai-interview-prep/backend)
+cd backend
 
 # 1. Create and activate a virtual environment
 python -m venv .venv
@@ -56,7 +57,8 @@ Health check: http://localhost:8000/health
 ### Option B — Frontend only (npm)
 
 ```bash
-cd ai-interview-prep/frontend
+# Navigate to frontend directory (from Cognizant-Hackathon: cd ai-interview-prep/frontend)
+cd frontend
 
 npm install
 cp .env.example .env   # VITE_API_URL defaults to /api (proxied to :8000)
