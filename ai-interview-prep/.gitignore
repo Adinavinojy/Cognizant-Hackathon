@@ -1,0 +1,46 @@
+# ── Python ────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+.venv/
+venv/
+env/
+.env
+!.env.example
+*.log
+
+# ── Alembic ───────────────────────────────────────────────────────────────
+# Keep versions/ tracked; ignore generated __pycache__ inside
+backend/alembic/__pycache__/
+
+# ── Node ──────────────────────────────────────────────────────────────────
+node_modules/
+frontend/dist/
+frontend/.env
+!frontend/.env.example
+.npm/
+
+# ── OS / IDE ──────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ── Docker ────────────────────────────────────────────────────────────────
+.docker/
+
+# ── Misc ──────────────────────────────────────────────────────────────────
+*.bak
+*.tmp
+coverage/
+.coverage
+htmlcov/
