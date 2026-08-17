@@ -1,22 +1,36 @@
-"""
-FastAPI application entry point.
-Mounts all feature routers and exposes GET /health.
-"""
-
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
+from app.database import engine, Base, SessionLocal
 from app.routers import auth, questions, sessions, answers, scores, dashboard
+from app.seed import seed_database
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Ensure database schema tables exist on startup
+    Base.metadata.create_all(bind=engine)
+    db = SessionLocal()
+    try:
+        seed_database(db)
+    except Exception as e:
+        print(f"Auto-seed notification: {e}")
+    finally:
+        db.close()
+    yield
+
 
 app = FastAPI(
     title="AI Interview Prep API",
-    description="Backend for the AI Interview Preparation Companion (hackathon scaffold).",
+    description="Backend for the AI Interview Preparation Companion.",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 # ---------------------------------------------------------------------------
-# CORS — allow all origins during local development; tighten in production.
+# CORS
 # ---------------------------------------------------------------------------
 app.add_middleware(
     CORSMiddleware,
@@ -33,6 +47,7 @@ app.include_router(auth.router,      prefix="/auth",       tags=["auth"])
 app.include_router(questions.router, prefix="/questions",  tags=["questions"])
 app.include_router(sessions.router,  prefix="/sessions",   tags=["sessions"])
 app.include_router(answers.router,   prefix="/sessions",   tags=["answers"])
+app.include_router(answers.router,   prefix="/answers",    tags=["answers"])
 app.include_router(scores.router,    prefix="/scores",     tags=["scores"])
 app.include_router(dashboard.router, prefix="",            tags=["dashboard"])
 
@@ -44,3 +59,4 @@ app.include_router(dashboard.router, prefix="",            tags=["dashboard"])
 def health_check() -> dict:
     """Liveness probe — always returns 200 OK."""
     return {"status": "ok"}
+

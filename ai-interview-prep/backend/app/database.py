@@ -11,17 +11,35 @@ from app.config import settings
 # ---------------------------------------------------------------------------
 # Engine
 # ---------------------------------------------------------------------------
-engine = create_engine(
-    settings.DATABASE_URL,
-    # For SQLite (useful in CI without Postgres):
-    # connect_args={"check_same_thread": False},
-    pool_pre_ping=True,
-)
+db_url = settings.DATABASE_URL
+
+if "sqlite" in db_url:
+    engine = create_engine(
+        db_url,
+        connect_args={"check_same_thread": False},
+    )
+else:
+    try:
+        engine = create_engine(
+            db_url,
+            pool_pre_ping=True,
+        )
+        # Verify connection
+        with engine.connect() as conn:
+            pass
+    except Exception as exc:
+        print(f"PostgreSQL connection error: {exc}. Falling back to SQLite.")
+        sqlite_file = "interview_prep.db"
+        engine = create_engine(
+            f"sqlite:///{sqlite_file}",
+            connect_args={"check_same_thread": False},
+        )
 
 # ---------------------------------------------------------------------------
 # Session factory
 # ---------------------------------------------------------------------------
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
 
 
 # ---------------------------------------------------------------------------
