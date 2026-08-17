@@ -26,6 +26,11 @@ class Settings(BaseSettings):
     CORS_ORIGINS: List[str] = ["http://localhost:5173", "http://localhost:3000"]
 
     # -----------------------------------------------------------------------
+    # AI Services (Gemini)
+    # -----------------------------------------------------------------------
+    GEMINI_API_KEY: str = ""
+
+    # -----------------------------------------------------------------------
     # App meta
     # -----------------------------------------------------------------------
     APP_ENV: str = "development"
@@ -34,6 +39,7 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=True,
+        extra="ignore",
     )
 
 
