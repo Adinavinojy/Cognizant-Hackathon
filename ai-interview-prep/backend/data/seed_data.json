@@ -1,0 +1,85 @@
+{
+    "job_roles": [
+        {
+            "role_id": 1,
+            "role_name": "Software Development Engineer (SDE)",
+            "description": "Core software engineering, data structures, algorithms, and system design."
+        },
+        {
+            "role_id": 2,
+            "role_name": "Data Analyst",
+            "description": "Data processing, SQL, statistics, and business intelligence."
+        }
+    ],
+    "topics": [
+        {
+            "topic_id": 1,
+            "role_id": 1,
+            "topic_name": "Data Structures & Algorithms",
+            "category": "Technical"
+        },
+        {
+            "topic_id": 2,
+            "role_id": 1,
+            "topic_name": "System Design",
+            "category": "Technical"
+        },
+        {
+            "topic_id": 3,
+            "role_id": 1,
+            "topic_name": "Behavioral & Communication",
+            "category": "Behavioral"
+        }
+    ],
+    "questions": [
+        {
+            "question_id": 101,
+            "role_id": 1,
+            "topic_id": 1,
+            "question_text": "How do you detect a cycle in a singly linked list?",
+            "reference_answer": "Use Floyd's Cycle-Finding Algorithm (Fast and Slow Pointers). Initialize two pointers, one moving one step at a time and the other moving two steps. If they meet at any point, a cycle exists. Time complexity is O(N) and space complexity is O(1).",
+            "difficulty": "Medium",
+            "source": "curated_bank"
+        },
+        {
+            "question_id": 102,
+            "role_id": 1,
+            "topic_id": 2,
+            "question_text": "Explain the trade-offs between SQL (Relational) and NoSQL databases.",
+            "reference_answer": "SQL databases are structured, ACID-compliant, and scale vertically, making them ideal for complex queries and transactional data. NoSQL databases offer flexible schemas, horizontal scalability, and high write throughput, but sacrifice strict immediate consistency (eventual consistency).",
+            "difficulty": "Hard",
+            "source": "curated_bank"
+        },
+        {
+            "question_id": 103,
+            "role_id": 1,
+            "topic_id": 3,
+            "question_text": "Describe a situation where you had a disagreement with a team member. How did you handle it?",
+            "reference_answer": "Focus on using the STAR method (Situation, Task, Action, Result). Highlight active listening, evaluating trade-offs using data or criteria, remaining professional, and reaching a collaborative consensus.",
+            "difficulty": "Easy",
+            "source": "curated_bank"
+        }
+    ],
+    "users": [
+        {
+            "user_id": "usr_001",
+            "name": "Shilpa Santhosh Nair",
+            "email": "shilpa@mace.ac.in",
+            "role": "student"
+        }
+    ],
+    "topic_progress": [
+        {
+            "user_id": "usr_001",
+            "topic_id": 1,
+            "avg_score": 78.5,
+            "attempts_count": 4
+        },
+        {
+            "user_id": "usr_001",
+            "topic_id": 2,
+            "avg_score": 42.0,
+            "attempts_count": 2
+        }
+    ]
+}
