@@ -4,7 +4,7 @@ ORM models: job_roles and topics tables.
 
 import uuid
 
-from sqlalchemy import Column, String, ForeignKey
+from sqlalchemy import Column, String, ForeignKey, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -19,6 +19,12 @@ class JobRole(Base):
     )
     role_name: str = Column(String(255), nullable=False, unique=True)
     description: str = Column(String(1024), nullable=True)
+    
+    # Custom role support
+    is_custom: bool = Column(Boolean, nullable=False, default=False)
+    mapped_to_role_id: uuid.UUID = Column(
+        UUID(as_uuid=True), ForeignKey("job_roles.role_id"), nullable=True
+    )
 
     topics = relationship("Topic", back_populates="job_role")
 

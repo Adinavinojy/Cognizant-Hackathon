@@ -21,7 +21,7 @@ class SignupRequest(BaseModel):
 
 class LoginRequest(BaseModel):
     email: EmailStr
-    password: str
+    name: str | None = None
 
 
 # ---------------------------------------------------------------------------
