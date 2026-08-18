@@ -35,6 +35,37 @@ FALLBACK_MODELS = [
     "gemini-3.7-flash",
 ]
 
+def _build_batch_prompt(role: str, requests: list[dict], examples_context: str) -> str:
+    """Builds a prompt for generating multiple questions at once."""
+    
+    req_lines = []
+    for i, req in enumerate(requests):
+        req_lines.append(f"{i+1}. Topic: {req['topic']}, Difficulty: {req['difficulty']}")
+    req_block = "\n".join(req_lines)
+
+    examples_block = (
+        f"Grounding Examples (use these to match style, depth, and format):\n{examples_context}"
+        if examples_context.strip()
+        else "No grounding examples available — generate from scratch."
+    )
+
+    return f"""You are an expert technical interviewer. Your job is to generate a batch of high-quality interview questions for a {role}.
+
+TARGET QUESTIONS TO GENERATE:
+{req_block}
+
+{examples_block}
+
+RULES:
+1. You MUST generate exactly {len(requests)} questions, corresponding exactly to the requested Topic and Difficulty pairs above.
+2. The questions MUST be relevant to a {role}.
+3. The reference_answer must be thorough and technically accurate.
+4. Do NOT copy the example questions — generate something new and distinct.
+
+Return valid JSON in the form of a list/array of objects. Each object must have exactly these keys:
+  "role", "topic", "difficulty", "question_text", "reference_answer"
+"""
+
 
 def _build_prompt(
     role: str,
@@ -147,6 +178,81 @@ def generate_question(role: str, topic: str, difficulty: str = "Medium") -> Ques
                 continue
 
     raise GenerationError(f"All Gemini models failed. Last error: {last_err}")
+
+def generate_question_batch(role: str, topic_difficulties: list[dict]) -> list[Question]:
+    """
+    Generates a batch of grounded interview questions using Gemini in a single call.
+    topic_difficulties is a list like: [{"topic": "Databases", "difficulty": "Hard"}, ...]
+    """
+    api_key = settings.GEMINI_API_KEY
+    if not api_key:
+        raise GenerationError("GEMINI_API_KEY environment variable is not set.")
+
+    if not topic_difficulties:
+        return []
+
+    # 1. Gather a little bit of context for each topic
+    all_examples = []
+    for req in topic_difficulties:
+        examples, _ = vector_store.get_smart_grounding(
+            role=role, topic=req["topic"], difficulty=req["difficulty"], n_results=1
+        )
+        if examples:
+            all_examples.extend(examples)
+
+    examples_context = "\n\n".join(
+        f"Example (Topic: {eg.topic}, Difficulty: {eg.difficulty}):\n"
+        f"  Question: {eg.question_text}\n"
+        f"  Answer:   {eg.reference_answer}"
+        for eg in all_examples
+    )
+
+    # 2. Build batch prompt
+    prompt = _build_batch_prompt(role, topic_difficulties, examples_context)
+
+    client = genai.Client(api_key=api_key)
+    last_err = None
+
+    for model_name in FALLBACK_MODELS:
+        for attempt in range(2):
+            try:
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                        temperature=0.7,
+                    ),
+                )
+
+                if response.text:
+                    raw_text = re.sub(r"^```json\s*|\s*```$", "", response.text.strip())
+                    data_list = json.loads(raw_text)
+                    
+                    if not isinstance(data_list, list):
+                        data_list = [data_list] # Fallback if it wrapped it in an object for some reason (though it shouldn't)
+
+                    questions = []
+                    for data in data_list:
+                        questions.append(Question(
+                            id=str(uuid.uuid4()),
+                            role=data.get("role", role),
+                            topic=data.get("topic", "General"),
+                            difficulty=data.get("difficulty", "Medium"),
+                            question_text=data["question_text"],
+                            reference_answer=data["reference_answer"],
+                        ))
+                    
+                    # Ensure we don't return more than requested, or if we got fewer, we just return what we got
+                    return questions[:len(topic_difficulties)]
+
+            except Exception as e:
+                last_err = e
+                time.sleep(1.5)
+                continue
+
+    raise GenerationError(f"All Gemini models failed for batch generation. Last error: {last_err}")
+
 
 
 def generate_followup_question(request: FollowUpRequest) -> Question:

@@ -1,101 +1,114 @@
 """
-Router: GET /dashboard/{user_id} and GET /study-plan/{user_id}
-Returns mock topic progress and study plan rows.
-TODO(dashboard-pair): Replace mock data with real DB queries once scoring pipeline is live.
+Router: /dashboard
+Endpoints for user statistics, session history, and skill breakdowns.
 """
 
 import uuid
-from datetime import datetime, timedelta
+import logging
 from typing import List
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+from sqlalchemy import func, desc
 
-from app.schemas.dashboard import TopicProgressOut, StudyPlanOut
+from app.database import get_db
+from app.models.session import MockSession
+from app.models.progress import TopicProgress
+from app.models.role_topic import Topic
+from app.schemas.dashboard import (
+    DashboardStatsOut, 
+    SessionHistoryOut, 
+    DashboardSkillsOut, 
+    SkillItem
+)
 
-router = APIRouter()
-
-# ---------------------------------------------------------------------------
-# Stable topic UUIDs used by both endpoints for consistency in dev
-# ---------------------------------------------------------------------------
-_TOPICS = [
-    (uuid.UUID("22222222-2222-2222-2222-222222222222"), "Operating Systems"),
-    (uuid.UUID("33333333-3333-3333-3333-333333333333"), "System Design"),
-    (uuid.UUID("44444444-4444-4444-4444-444444444444"), "Databases"),
-    (uuid.UUID("55555555-5555-5555-5555-555555555555"), "Algorithms"),
-    (uuid.UUID("66666666-6666-6666-6666-666666666666"), "Behavioural"),
-]
+log = logging.getLogger(__name__)
+router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
 
-@router.get("/dashboard/{user_id}", response_model=List[TopicProgressOut])
-def get_dashboard(user_id: uuid.UUID) -> List[TopicProgressOut]:
+@router.get("/{user_id}/stats", response_model=DashboardStatsOut)
+def get_dashboard_stats(user_id: uuid.UUID, db: Session = Depends(get_db)) -> DashboardStatsOut:
     """
-    STUB — returns mock topic progress rows for the given user.
-    TODO(dashboard-pair): Query topic_progress table filtered by user_id.
+    Returns aggregate statistics and a history of all sessions for a user.
     """
-    mock_scores = [0.82, 0.55, 0.71, 0.63, 0.90]
-    mock_attempts = [5, 2, 4, 3, 7]
+    sessions = db.query(MockSession).filter(
+        MockSession.user_id == user_id,
+        MockSession.status == "completed"
+    ).order_by(desc(MockSession.started_at)).all()
 
-    return [
-        TopicProgressOut(
-            id=uuid.uuid4(),
-            user_id=user_id,
-            topic_id=topic_id,
-            avg_score=score,
-            attempts_count=attempts,
-            last_updated=datetime.utcnow() - timedelta(days=idx),
+    total_sessions = len(sessions)
+    
+    if total_sessions == 0:
+        return DashboardStatsOut(
+            total_sessions=0,
+            highest_score=None,
+            average_score=None,
+            history=[]
         )
-        for idx, ((topic_id, _name), score, attempts) in enumerate(
-            zip(_TOPICS, mock_scores, mock_attempts)
+
+    # Calculate highest and average
+    valid_scores = [s.overall_score for s in sessions if s.overall_score is not None]
+    highest_score = max(valid_scores) if valid_scores else None
+    average_score = sum(valid_scores) / len(valid_scores) if valid_scores else None
+
+    # Format history
+    history = [
+        SessionHistoryOut(
+            session_id=s.session_id,
+            started_at=s.started_at,
+            mode=s.mode,
+            overall_score=s.overall_score,
+            question_count=s.question_count
         )
+        for s in sessions
     ]
 
+    return DashboardStatsOut(
+        total_sessions=total_sessions,
+        highest_score=highest_score,
+        average_score=average_score,
+        history=history
+    )
 
-@router.get("/study-plan/{user_id}", response_model=List[StudyPlanOut])
-def get_study_plan(user_id: uuid.UUID) -> List[StudyPlanOut]:
+
+@router.get("/{user_id}/skills", response_model=DashboardSkillsOut)
+def get_dashboard_skills(user_id: uuid.UUID, db: Session = Depends(get_db)) -> DashboardSkillsOut:
     """
-    STUB — returns a mock prioritised study plan for the given user.
-    TODO(dashboard-pair): Run study plan generation from services once scoring is live.
+    Returns the user's skills grouped into strengths, average, and weaknesses.
     """
-    resources_by_topic = {
-        "Databases": [
-            "https://use-the-index-luke.com",
-            "CMU 15-445 lectures",
-        ],
-        "System Design": [
-            "Designing Data-Intensive Applications (Kleppmann)",
-            "https://github.com/donnemartin/system-design-primer",
-        ],
-        "Algorithms": [
-            "LeetCode Top 100 Liked Questions",
-            "CLRS Chapter 6-9",
-        ],
-        "Operating Systems": [
-            "Operating System Concepts (Silberschatz)",
-            "https://pages.cs.wisc.edu/~remzi/OSTEP/",
-        ],
-        "Behavioural": [
-            "STAR method guide",
-            "Glassdoor company-specific questions",
-        ],
-    }
+    progress_rows = db.query(TopicProgress, Topic).join(
+        Topic, TopicProgress.topic_id == Topic.topic_id
+    ).filter(
+        TopicProgress.user_id == user_id,
+        TopicProgress.attempts_count > 0,
+        TopicProgress.avg_score.isnot(None)
+    ).all()
 
-    # Prioritise topics with lower avg_score first (simulated)
-    prioritised = [
-        (_TOPICS[1], 1),  # System Design — score 0.55
-        (_TOPICS[3], 2),  # Algorithms    — score 0.63
-        (_TOPICS[2], 3),  # Databases     — score 0.71
-        (_TOPICS[0], 4),  # OS            — score 0.82
-        (_TOPICS[4], 5),  # Behavioural   — score 0.90
-    ]
+    strengths = []
+    average = []
+    weaknesses = []
 
-    return [
-        StudyPlanOut(
-            id=uuid.uuid4(),
-            user_id=user_id,
-            topic_id=topic_id,
-            priority_rank=rank,
-            recommended_resources=resources_by_topic.get(name, []),
-            generated_at=datetime.utcnow(),
+    for progress, topic in progress_rows:
+        item = SkillItem(
+            topic_name=topic.topic_name,
+            avg_score=progress.avg_score,
+            attempts=progress.attempts_count
         )
-        for (topic_id, name), rank in prioritised
-    ]
+        
+        if progress.avg_score >= 0.70:
+            strengths.append(item)
+        elif progress.avg_score >= 0.40:
+            average.append(item)
+        else:
+            weaknesses.append(item)
+
+    # Sort descending by score within each bucket
+    strengths.sort(key=lambda x: x.avg_score, reverse=True)
+    average.sort(key=lambda x: x.avg_score, reverse=True)
+    weaknesses.sort(key=lambda x: x.avg_score, reverse=True)
+
+    return DashboardSkillsOut(
+        strengths=strengths,
+        average=average,
+        weaknesses=weaknesses
+    )

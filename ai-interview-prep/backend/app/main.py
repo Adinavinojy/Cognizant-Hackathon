@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.routers import auth, questions, sessions, answers, scores, dashboard
+from app.routers import auth, questions, sessions, answers, scores, dashboard, roles
 
 app = FastAPI(
     title="AI Interview Prep API",
@@ -34,6 +34,7 @@ app.include_router(questions.router, prefix="/questions",  tags=["questions"])
 app.include_router(sessions.router,  prefix="/sessions",   tags=["sessions"])
 app.include_router(answers.router,   prefix="/sessions",   tags=["answers"])
 app.include_router(scores.router,    prefix="/scores",     tags=["scores"])
+app.include_router(roles.router,     prefix="/roles",      tags=["roles"])
 app.include_router(dashboard.router, prefix="",            tags=["dashboard"])
 
 
@@ -44,3 +45,5 @@ app.include_router(dashboard.router, prefix="",            tags=["dashboard"])
 def health_check() -> dict:
     """Liveness probe — always returns 200 OK."""
     return {"status": "ok"}
+
+# Trigger reload
